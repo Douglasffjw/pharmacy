@@ -51,25 +51,7 @@ git clone https://github.com/Douglasffjw/pharmacy.git
 cd pharmacy
 ```
 
-### 🗄️ **2. Configure o Banco de Dados**
 
-1. **Instale o PostgreSQL** (se não tiver)
-2. **Crie um banco de dados:**
-   ```sql
-   CREATE DATABASE pharmacy_db;
-   ```
-
-3. **Configure as variáveis de ambiente:**
-   ```bash
-   cd backend
-   cp .env.example .env
-   ```
-
-4. **Edite o arquivo `.env`:**
-   ```env
-   DATABASE_URL="postgresql://usuario:senha@localhost:5432/pharmacy_db"
-   JWT_SECRET="seu_jwt_secret_super_seguro"
-   ```
 
 ### 🔨 **3. Setup do Backend**
 ```bash
