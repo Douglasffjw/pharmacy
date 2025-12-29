@@ -36,7 +36,7 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterCustomerPage />} />
               <Route path="/register-seller" element={
-                <PrivateRoute allowedRoles={['seller']}>
+                  <PrivateRoute allowedRoles={['seller', 'admin']}>
                   <RegisterSellerPage />
                 </PrivateRoute>
               } />
@@ -51,22 +51,22 @@ function App() {
                 </PrivateRoute>
               } />
               <Route path="/create-product" element={
-                <PrivateRoute allowedRoles={['seller']}>
+                  <PrivateRoute allowedRoles={['seller', 'admin']}>
                   <CreateProductPage />
                 </PrivateRoute>
               } />
               <Route path="/seller-dashboard" element={
-                <PrivateRoute allowedRoles={['seller']}>
+                  <PrivateRoute allowedRoles={['seller', 'admin']}>
                   <SellerDashboard />
                 </PrivateRoute>
               } />
               <Route path="/seller-sales" element={
-                <PrivateRoute allowedRoles={['seller']}>
+                  <PrivateRoute allowedRoles={['seller', 'admin']}>
                   <SellerSalesPage />
                 </PrivateRoute>
               } />
               <Route path="/stock-management" element={
-                <PrivateRoute allowedRoles={['seller']}>
+                  <PrivateRoute allowedRoles={['seller', 'admin']}>
                   <StockManagementPage />
                 </PrivateRoute>
               } />
@@ -96,6 +96,9 @@ function App() {
               />
               <Route path="/debug-cart" element={<DebugCartPage />} />
             </Routes>
+            <footer className="bg-white text-center text-sm text-gray-600 py-4">
+              © 2026 Todos os direitos reservados a Douglas Freitas
+            </footer>
           </div>
         </Router>
       </CartProvider>

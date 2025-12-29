@@ -28,11 +28,11 @@ const StockManagementPage: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user || user.role !== 'seller') {
+    if (!user || (user.role !== 'seller' && user.role !== 'admin')) {
       navigate('/login');
       return;
     }
-    
+
     fetchProducts();
   }, [user, navigate]);
 

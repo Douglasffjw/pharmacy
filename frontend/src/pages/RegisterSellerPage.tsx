@@ -14,10 +14,11 @@ export const RegisterSellerPage = () => {
     confirmPassword: '',
   });
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Verifica se o usuário atual é um vendedor
-  if (!user || user.role !== 'seller') {
+  // Verifica se o usuário atual é um administrador
+  if (!user || user.role !== 'admin') {
     navigate('/');
     return null;
   }
@@ -34,6 +35,7 @@ export const RegisterSellerPage = () => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    setSuccess('');
 
     // Validações básicas
     if (formData.password !== formData.confirmPassword) {
@@ -49,11 +51,15 @@ export const RegisterSellerPage = () => {
         password: formData.password
       });
 
-      navigate('/sellers');
+      setSuccess('Vendedor registrado com sucesso! Redirecionando...');
+      setFormData({ name: '', email: '', password: '', confirmPassword: '' });
+      setTimeout(() => { setSuccess(''); navigate('/seller-dashboard'); }, 1400);
     } catch (err: unknown) {
-  const axiosError = err as AxiosError<{ message: string }>;
-  setError(axiosError.response?.data?.message || 'Erro ao registrar vendedor');
-}
+      const axiosError = err as AxiosError<{ message: string }>;
+      setError(axiosError.response?.data?.message || 'Erro ao registrar vendedor');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -71,6 +77,7 @@ export const RegisterSellerPage = () => {
               <p className="text-red-700">{error}</p>
             </div>
           )}
+          {/* success toast appears fixed on the page */}
 
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
@@ -144,7 +151,16 @@ export const RegisterSellerPage = () => {
             </div>
           </form>
         </div>
-      </div>
+        </div>
+
+      {/* Toast */}
+      {success && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <div className="bg-green-600 text-white px-4 py-3 rounded shadow-lg">
+            {success}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

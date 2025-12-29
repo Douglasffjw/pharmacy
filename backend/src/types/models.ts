@@ -1,15 +1,18 @@
 export interface User {
   id: string;
   email: string;
-  name: string;
-  role: 'customer' | 'seller';
-  createdBy?: string; // ID do vendedor que criou (apenas para vendedores)
+  nome: string;
+  senha?: string;
+  telefone?: string;
+  dataNascimento?: string;
+  papel: 'cliente' | 'vendedor' | 'admin';
+  criadoPor?: string; // ID do vendedor que criou (apenas para vendedores)
 }
 
 export interface JwtPayload {
   id: string;
   email: string;
-  role: 'customer' | 'seller';
+  role: 'cliente' | 'vendedor' | 'admin';
 }
 
 export interface LoginCredentials {
@@ -19,7 +22,6 @@ export interface LoginCredentials {
 
 export interface CustomerRegistration extends LoginCredentials {
   name: string;
-  cpf?: string;
   phone?: string;
   birthDate?: string;
 }

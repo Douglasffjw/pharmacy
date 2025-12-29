@@ -3,15 +3,15 @@ import { Request } from 'express';
 export interface User {
   id: string;
   email: string;
-  name: string;
-  role: 'CUSTOMER' | 'SELLER';
-  createdBy?: string;
+  nome: string;
+  papel: 'CLIENTE' | 'VENDEDOR' | 'ADMIN' | 'cliente' | 'vendedor' | 'admin';
+  criadoPor?: string;
 }
 
 export interface JwtPayload {
   id: string;
   email: string;
-  role: 'CUSTOMER' | 'SELLER';
+  role: 'cliente' | 'vendedor' | 'admin';
 }
 
 export interface LoginCredentials {

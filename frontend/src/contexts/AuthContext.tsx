@@ -69,6 +69,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!user) {
         throw new Error('Usuário não autenticado');
       }
+      if (user.role !== 'admin') {
+        throw new Error('Apenas administradores podem registrar vendedores');
+      }
       await authService.registerSeller(data);
     } finally {
       setLoading(false);

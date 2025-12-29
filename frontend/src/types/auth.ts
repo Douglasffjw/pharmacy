@@ -1,4 +1,4 @@
-export type UserRole = 'customer' | 'seller';
+export type UserRole = 'customer' | 'seller' | 'admin';
 
 export interface User {
   id: string;
@@ -9,7 +9,6 @@ export interface User {
 
 export interface Customer extends User {
   role: 'customer';
-  cpf: string;
   phone: string;
   birthDate: string;
 }

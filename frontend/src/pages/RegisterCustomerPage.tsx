@@ -8,7 +8,6 @@ export const RegisterCustomerPage = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    cpf: '',
     phone: '',
     birthDate: ''
   });
@@ -39,8 +38,8 @@ export const RegisterCustomerPage = () => {
 
     try {
       // Omite o campo confirmPassword do objeto antes de enviar para o backend
-      const { password, name, email, cpf, phone, birthDate } = formData;
-      await registerCustomer({ password, name, email, cpf, phone, birthDate });
+      const { password, name, email, phone, birthDate } = formData;
+      await registerCustomer({ password, name, email, phone, birthDate });
       navigate('/');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
@@ -93,21 +92,7 @@ export const RegisterCustomerPage = () => {
               onChange={handleChange}
             />
           </div>
-          <div>
-            <label htmlFor="cpf" className="block text-sm font-medium text-gray-700">
-              CPF
-            </label>
-            <input
-              id="cpf"
-              name="cpf"
-              type="text"
-              required
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-              value={formData.cpf}
-              onChange={handleChange}
-              placeholder="000.000.000-00"
-            />
-          </div>
+          
           <div>
             <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
               Telefone

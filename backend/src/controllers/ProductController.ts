@@ -48,7 +48,7 @@ export class ProductController {
       const { name, description, price, category, brand, quantity, prescription } = req.body;
       const currentUser = req.user;
 
-      if (!currentUser || currentUser.role !== 'SELLER') {
+      if (!currentUser || String((currentUser as any).role).toLowerCase() !== 'vendedor') {
         return res.status(403).json({ error: 'Apenas vendedores podem cadastrar produtos' });
       }
 
@@ -60,17 +60,17 @@ export class ProductController {
         });
       }
 
-      const product = await prisma.product.create({
+      const product = await prisma.produto.create({
         data: {
-          name,
-          description,
-          price: parseFloat(price),
-          category,
-          brand,
-          quantity: parseInt(quantity) || 0,
-          prescription: prescription === 'true',
-          images,
-          createdBy: currentUser.id
+          nome: name,
+          descricao: description,
+          preco: parseFloat(price),
+          categoria: category,
+          marca: brand,
+          quantidade: parseInt(quantity) || 0,
+          receita: prescription === 'true',
+          imagens: images,
+          criadoPor: (currentUser as any).id
         }
       });
 
@@ -87,7 +87,7 @@ export class ProductController {
       const { category, search } = req.query;
       
       const where: any = {
-        quantity: { gt: 0 } // Apenas produtos em estoque
+        quantidade: { gt: 0 } // Apenas produtos em estoque
       };
 
       if (category) {
@@ -96,25 +96,25 @@ export class ProductController {
 
       if (search) {
         where.OR = [
-          { name: { contains: search as string, mode: 'insensitive' } },
-          { description: { contains: search as string, mode: 'insensitive' } },
-          { brand: { contains: search as string, mode: 'insensitive' } }
+          { nome: { contains: search as string, mode: 'insensitive' } },
+          { descricao: { contains: search as string, mode: 'insensitive' } },
+          { marca: { contains: search as string, mode: 'insensitive' } }
         ];
       }
 
-      const products = await prisma.product.findMany({
+      const products = await prisma.produto.findMany({
         where,
         include: {
-          creator: {
+          criador: {
             select: {
               id: true,
-              name: true,
+              nome: true,
               email: true
             }
           }
         },
         orderBy: {
-          createdAt: 'desc'
+          criadoEm: 'desc'
         }
       });
 
@@ -130,13 +130,13 @@ export class ProductController {
     try {
       const { id } = req.params;
 
-      const product = await prisma.product.findUnique({
+      const product = await prisma.produto.findUnique({
         where: { id },
         include: {
-          creator: {
+          criador: {
             select: {
               id: true,
-              name: true,
+              nome: true,
               email: true
             }
           }
@@ -166,7 +166,7 @@ export class ProductController {
       }
 
       // Verificar se o produto existe e se o usuário pode editá-lo
-      const existingProduct = await prisma.product.findUnique({
+      const existingProduct = await prisma.produto.findUnique({
         where: { id }
       });
 
@@ -174,12 +174,12 @@ export class ProductController {
         return res.status(404).json({ error: 'Produto não encontrado' });
       }
 
-      if (existingProduct.createdBy !== currentUser.id) {
+      if ((existingProduct as any).criadoPor !== (currentUser as any).id) {
         return res.status(403).json({ error: 'Você só pode editar produtos que criou' });
       }
 
       // Processar novas imagens se enviadas
-      let images = existingProduct.images;
+      let images = (existingProduct as any).imagens || [];
       if (req.files && Array.isArray(req.files)) {
         const newImages: string[] = [];
         req.files.forEach((file) => {
@@ -188,17 +188,17 @@ export class ProductController {
         images = [...images, ...newImages];
       }
 
-      const product = await prisma.product.update({
+      const product = await prisma.produto.update({
         where: { id },
         data: {
-          ...(name && { name }),
-          ...(description && { description }),
-          ...(price && { price: parseFloat(price) }),
-          ...(category && { category }),
-          ...(brand && { brand }),
-          ...(quantity !== undefined && { quantity: parseInt(quantity) }),
-          ...(prescription !== undefined && { prescription: prescription === 'true' }),
-          ...(req.files && { images })
+          ...(name && { nome: name }),
+          ...(description && { descricao: description }),
+          ...(price && { preco: parseFloat(price) }),
+          ...(category && { categoria: category }),
+          ...(brand && { marca: brand }),
+          ...(quantity !== undefined && { quantidade: parseInt(quantity) }),
+          ...(prescription !== undefined && { receita: prescription === 'true' }),
+          ...(req.files && { imagens: images })
         }
       });
 
@@ -220,7 +220,7 @@ export class ProductController {
       }
 
       // Verificar se o produto existe e se o usuário pode deletá-lo
-      const existingProduct = await prisma.product.findUnique({
+      const existingProduct = await prisma.produto.findUnique({
         where: { id }
       });
 
@@ -228,11 +228,11 @@ export class ProductController {
         return res.status(404).json({ error: 'Produto não encontrado' });
       }
 
-      if (existingProduct.createdBy !== currentUser.id) {
+      if ((existingProduct as any).criadoPor !== (currentUser as any).id) {
         return res.status(403).json({ error: 'Você só pode deletar produtos que criou' });
       }
 
-      await prisma.product.delete({
+      await prisma.produto.delete({
         where: { id }
       });
 
@@ -254,7 +254,7 @@ export class ProductController {
         return res.status(403).json({ error: 'Apenas vendedores podem atualizar estoque' });
       }
 
-      const product = await prisma.product.findUnique({
+      const product = await prisma.produto.findUnique({
         where: { id }
       });
 
@@ -262,15 +262,15 @@ export class ProductController {
         return res.status(404).json({ error: 'Produto não encontrado' });
       }
 
-      if (product.createdBy !== currentUser.id) {
+      if ((product as any).criadoPor !== (currentUser as any).id) {
         return res.status(403).json({ error: 'Você só pode gerenciar estoque de produtos que criou' });
       }
 
-      const updatedProduct = await prisma.product.update({
+      const updatedProduct = await prisma.produto.update({
         where: { id },
         data: {
-          quantity: parseInt(quantity),
-          inStock: parseInt(quantity) > 0
+          quantidade: parseInt(quantity),
+          emEstoque: parseInt(quantity) > 0
         }
       });
 

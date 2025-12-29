@@ -6,9 +6,8 @@ import path from 'path';
 // Configura o dotenv com o caminho absoluto do arquivo .env
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-import { AuthController } from './controllers/AuthController';
-import { authMiddleware } from './middlewares/auth';
-import { sellerAuth } from './middlewares/sellerAuth';
+import authRouter from './routes/auth';
+import { authMiddleware, adminMiddleware } from './middlewares/auth';
 import { seedDatabase } from './seed';
 import productRoutes from './routes/products';
 import orderRoutes from './routes/orders';
@@ -25,18 +24,11 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Controllers
-const authController = new AuthController();
-
-
-
 // Servir arquivos estáticos (uploads)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Rotas de autenticação
-app.post('/auth/login', authController.login);
-app.post('/auth/register-customer', authController.registerCustomer);
-app.post('/auth/register-seller', authMiddleware, sellerAuth, authController.registerSeller);
+// Rotas de autenticação (router)
+app.use('/auth', authRouter);
 
 // Rotas de produtos
 app.use('/products', productRoutes);

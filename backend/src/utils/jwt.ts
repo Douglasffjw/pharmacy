@@ -10,10 +10,12 @@ if (!JWT_SECRET) {
 }
 
 export const generateToken = (user: User): string => {
+  const papelRaw: any = (user as any).papel || (user as any).role || '';
+  const roleLower = String(papelRaw).toLowerCase();
   const payload: JwtPayload = {
     id: user.id,
     email: user.email,
-    role: user.role
+    role: roleLower === 'admin' ? 'admin' : (roleLower === 'vendedor' || roleLower === 'seller' ? 'vendedor' : 'cliente')
   };
 
   const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });

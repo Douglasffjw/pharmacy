@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { AuthRequest } from '../types/auth';
-
-const prisma = new PrismaClient();
+import prisma from '../lib/prisma';
 
 export class OrderController {
   // Criar pedido (checkout)
@@ -18,23 +17,23 @@ export class OrderController {
       // Verificar se todos os produtos existem e têm estoque suficiente
       const productChecks = await Promise.all(
         items.map(async (item: { productId: string; quantity: number }) => {
-          const product = await prisma.product.findUnique({
+          const product = await prisma.produto.findUnique({
             where: { id: item.productId },
-            select: { id: true, price: true, quantity: true, name: true, createdBy: true }
+            select: { id: true, preco: true, quantidade: true, nome: true, criadoPor: true }
           });
 
           if (!product) {
             throw new Error(`Produto ${item.productId} não encontrado`);
           }
 
-          if (product.quantity < item.quantity) {
-            throw new Error(`Estoque insuficiente para ${product.name}. Disponível: ${product.quantity}`);
+          if ((product as any).quantidade < item.quantity) {
+            throw new Error(`Estoque insuficiente para ${ (product as any).nome }. Disponível: ${ (product as any).quantidade }`);
           }
 
           return {
             ...item,
             product,
-            subtotal: product.price * item.quantity
+            subtotal: (product as any).preco * item.quantity
           };
         })
       );
@@ -45,11 +44,11 @@ export class OrderController {
       // Criar o pedido e os itens em uma transação
       const order = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         // Criar o pedido
-        const newOrder = await tx.order.create({
+        const newOrder = await tx.pedido.create({
           data: {
-            customerId,
+            clienteId: customerId,
             total,
-            status: 'PENDING'
+            statusPedido: 'PENDENTE'
           }
         });
 
@@ -57,20 +56,20 @@ export class OrderController {
         const orderItems = await Promise.all(
           productChecks.map(async (item) => {
             // Criar item do pedido
-            const orderItem = await tx.orderItem.create({
+            const orderItem = await tx.itemPedido.create({
               data: {
-                orderId: newOrder.id,
-                productId: item.productId,
-                quantity: item.quantity,
-                price: item.product.price
+                pedidoId: newOrder.id,
+                produtoId: item.productId,
+                quantidade: item.quantity,
+                preco: (item.product as any).preco
               }
             });
 
             // Reduzir estoque do produto
-            await tx.product.update({
+            await tx.produto.update({
               where: { id: item.productId },
               data: {
-                quantity: {
+                quantidade: {
                   decrement: item.quantity
                 }
               }
@@ -84,16 +83,16 @@ export class OrderController {
       });
 
       // Buscar pedido completo com relacionamentos
-      const completeOrder = await prisma.order.findUnique({
-        where: { id: order.id },
+      const completeOrder = await prisma.pedido.findUnique({
+        where: { id: (order as any).id },
         include: {
-          customer: {
-            select: { id: true, name: true, email: true }
+          cliente: {
+            select: { id: true, nome: true, email: true }
           },
-          items: {
+          itens: {
             include: {
-              product: {
-                select: { id: true, name: true, images: true }
+              produto: {
+                select: { id: true, nome: true, imagens: true }
               }
             }
           }
@@ -116,18 +115,18 @@ export class OrderController {
     try {
       const customerId = req.user!.id;
 
-      const orders = await prisma.order.findMany({
-        where: { customerId },
+      const orders = await prisma.pedido.findMany({
+        where: { clienteId: customerId },
         include: {
-          items: {
+          itens: {
             include: {
-              product: {
-                select: { id: true, name: true, images: true, category: true }
+              produto: {
+                select: { id: true, nome: true, imagens: true, categoria: true }
               }
             }
           }
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { criadoEm: 'desc' }
       });
 
       res.json({ orders });
@@ -147,25 +146,25 @@ export class OrderController {
         return res.status(403).json({ error: 'Acesso negado. Apenas vendedores podem ver todas as vendas.' });
       }
 
-      const orders = await prisma.order.findMany({
+      const orders = await prisma.pedido.findMany({
         include: {
-          customer: {
-            select: { id: true, name: true, email: true }
+          cliente: {
+            select: { id: true, nome: true, email: true }
           },
-          items: {
+          itens: {
             include: {
-              product: {
-                select: { id: true, name: true, images: true, category: true, createdBy: true },
+              produto: {
+                select: { id: true, nome: true, imagens: true, categoria: true, criadoPor: true },
                 include: {
-                  creator: {
-                    select: { id: true, name: true }
+                  criador: {
+                    select: { id: true, nome: true }
                   }
                 }
               }
             }
           }
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { criadoEm: 'desc' }
       });
 
       res.json({ orders });
@@ -183,13 +182,13 @@ export class OrderController {
       const user = req.user!;
 
       // Buscar o pedido
-      const order = await prisma.order.findUnique({
+      const order = await prisma.pedido.findUnique({
         where: { id: orderId },
         include: {
-          items: {
+          itens: {
             include: {
-              product: {
-                select: { createdBy: true }
+              produto: {
+                select: { criadoPor: true }
               }
             }
           }
@@ -200,18 +199,18 @@ export class OrderController {
         return res.status(404).json({ error: 'Pedido não encontrado' });
       }
 
-      if (order.status === 'CANCELLED') {
+      if ((order as any).statusPedido === 'CANCELADO') {
         return res.status(400).json({ error: 'Pedido já foi cancelado' });
       }
 
-      if (order.status === 'COMPLETED') {
+      if ((order as any).statusPedido === 'CONCLUIDO') {
         return res.status(400).json({ error: 'Não é possível cancelar um pedido já finalizado' });
       }
 
       // Verificar permissões
       const canCancel = 
-        user.role === 'CUSTOMER' && order.customerId === user.id || // Cliente pode cancelar seus pedidos
-        user.role === 'SELLER' && order.items.some((item: any) => item.product.createdBy === user.id); // Vendedor pode cancelar suas vendas
+        String(user.role) === 'cliente' && (order as any).clienteId === user.id || // Cliente pode cancelar seus pedidos
+        String(user.role) === 'vendedor' && (order as any).itens.some((item: any) => (item.produto as any).criadoPor === user.id); // Vendedor pode cancelar suas vendas
 
       if (!canCancel) {
         return res.status(403).json({ error: 'Você não tem permissão para cancelar este pedido' });
@@ -220,19 +219,19 @@ export class OrderController {
       // Cancelar pedido e devolver estoque em transação
       const cancelledOrder = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         // Atualizar status do pedido
-        const updatedOrder = await tx.order.update({
+        const updatedOrder = await tx.pedido.update({
           where: { id: orderId },
-          data: { status: 'CANCELLED' }
+          data: { statusPedido: 'CANCELADO' }
         });
 
         // Devolver estoque dos produtos
         await Promise.all(
           order.items.map(async (item: any) => {
-            await tx.product.update({
-              where: { id: item.productId },
+            await tx.produto.update({
+              where: { id: item.produtoId || item.productId },
               data: {
-                quantity: {
-                  increment: item.quantity
+                quantidade: {
+                  increment: item.quantidade || item.quantity
                 }
               }
             });
@@ -259,19 +258,19 @@ export class OrderController {
       const { orderId } = req.params;
       const user = req.user!;
 
-      const order = await prisma.order.findUnique({
+      const order = await prisma.pedido.findUnique({
         where: { id: orderId },
         include: {
-          customer: {
-            select: { id: true, name: true, email: true }
+          cliente: {
+            select: { id: true, nome: true, email: true }
           },
-          items: {
+          itens: {
             include: {
-              product: {
-                select: { id: true, name: true, images: true, category: true, createdBy: true },
+              produto: {
+                select: { id: true, nome: true, imagens: true, categoria: true, criadoPor: true },
                 include: {
-                  creator: {
-                    select: { id: true, name: true }
+                  criador: {
+                    select: { id: true, nome: true }
                   }
                 }
               }

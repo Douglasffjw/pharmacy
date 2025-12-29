@@ -11,7 +11,7 @@ export class AuthController {
       const { email, password }: LoginCredentials = req.body;
 
       // Busca o usuário pelo email
-      const user = await prisma.user.findUnique({
+      const user = await prisma.usuario.findUnique({
         where: { email }
       });
 
@@ -20,25 +20,23 @@ export class AuthController {
       }
 
       // Verifica a senha
-      const validPassword = await bcrypt.compare(password, user.password);
+      const validPassword = await bcrypt.compare(password, user.senha as string);
       if (!validPassword) {
         return res.status(401).json({ error: 'Email ou senha incorretos' });
       }
 
-      const token = generateToken({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role.toLowerCase() as 'customer' | 'seller'
-      });
+      const token = generateToken(user as any);
 
       // Remove a senha do objeto de retorno
-      const { password: _, ...userWithoutPassword } = user;
+      const { senha: _, ...userWithoutPassword } = user as any;
+
+      const papel = (user as any).papel ? String((user as any).papel).toLowerCase() : '';
+      const roleForFrontend = papel === 'admin' ? 'admin' : (papel === 'vendedor' || papel === 'seller' ? 'seller' : 'customer');
 
       return res.json({ 
         user: {
           ...userWithoutPassword,
-          role: user.role.toLowerCase()
+          role: roleForFrontend
         }, 
         token 
       });
@@ -54,7 +52,7 @@ export class AuthController {
       console.log('📥 Dados recebidos para registro:', JSON.stringify(data, null, 2));
 
       // Verifica se já existe um usuário com o mesmo email
-      const existingUser = await prisma.user.findUnique({
+      const existingUser = await prisma.usuario.findUnique({
         where: { email: data.email }
       });
 
@@ -65,39 +63,35 @@ export class AuthController {
 
       // Cria novo usuário
       const hashedPassword = await bcrypt.hash(data.password, 10);
-      const user = await prisma.user.create({
+      const user = await prisma.usuario.create({
         data: {
           email: data.email,
-          name: data.name,
-          password: hashedPassword,
-          cpf: data.cpf,
-          phone: data.phone,
-          birthDate: data.birthDate ? new Date(data.birthDate) : null,
-          role: 'CUSTOMER'
+          nome: data.name,
+          senha: hashedPassword,
+          telefone: data.phone,
+          dataNascimento: data.birthDate ? new Date(data.birthDate) : null,
+          papel: 'CLIENTE'
         }
       });
 
-      const token = generateToken({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role.toLowerCase() as 'customer' | 'seller'
-      });
+      const token = generateToken(user as any);
 
       // Remove a senha do objeto de retorno
-      const { password, ...userWithoutPassword } = user;
+      const { senha, ...userWithoutPassword } = user as any;
 
       console.log('✅ Usuário criado com sucesso:', {
         id: user.id,
         email: user.email,
-        name: user.name,
-        cpf: user.cpf
+        nome: user.nome
       });
+
+      const papel2 = (user as any).papel ? String((user as any).papel).toLowerCase() : '';
+      const roleForFrontend2 = papel2 === 'admin' ? 'admin' : (papel2 === 'vendedor' || papel2 === 'seller' ? 'seller' : 'customer');
 
       return res.status(201).json({ 
         user: {
           ...userWithoutPassword,
-          role: user.role.toLowerCase()
+          role: roleForFrontend2
         }, 
         token 
       });
@@ -110,14 +104,20 @@ export class AuthController {
   public registerSeller = async (req: Request, res: Response): Promise<Response> => {
     try {
       const data: SellerRegistration = req.body;
-      const currentUser = req.user;
+      const currentUser = req.user as any;
 
-      if (!currentUser || currentUser.role !== 'SELLER') {
-        return res.status(403).json({ error: 'Não autorizado' });
+      if (!currentUser || !currentUser.id) {
+        return res.status(401).json({ error: 'Não autenticado' });
+      }
+
+      // Verifica papel do usuário diretamente no banco (mais seguro que confiar apenas no token)
+      const userInDb = await prisma.usuario.findUnique({ where: { id: currentUser.id } });
+      if (!userInDb || String(userInDb.papel).toUpperCase() !== 'ADMIN') {
+        return res.status(403).json({ error: 'Não autorizado. Apenas administradores podem criar vendedores.' });
       }
 
       // Verifica se já existe um usuário com o mesmo email
-      const existingUser = await prisma.user.findUnique({
+      const existingUser = await prisma.usuario.findUnique({
         where: { email: data.email }
       });
 
@@ -127,36 +127,67 @@ export class AuthController {
 
       // Cria novo vendedor
       const hashedPassword = await bcrypt.hash(data.password, 10);
-      const user = await prisma.user.create({
+      const user = await prisma.usuario.create({
         data: {
           email: data.email,
-          name: data.name,
-          password: hashedPassword,
-          role: 'SELLER',
-          createdBy: currentUser.id
+          nome: data.name,
+          senha: hashedPassword,
+          papel: 'VENDEDOR',
+          criadoPor: currentUser.id
         }
       });
 
-      const token = generateToken({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role.toLowerCase() as 'customer' | 'seller'
-      });
+      const token = generateToken(user as any);
 
       // Remove a senha do objeto de retorno
-      const { password, ...userWithoutPassword } = user;
+      const { senha: pwd, ...userWithoutPassword2 } = user as any;
+
+      const papel3 = (user as any).papel ? String((user as any).papel).toLowerCase() : '';
+      const roleForFrontend3 = papel3 === 'admin' ? 'admin' : (papel3 === 'vendedor' || papel3 === 'seller' ? 'seller' : 'customer');
 
       return res.status(201).json({ 
         user: {
-          ...userWithoutPassword,
-          role: user.role.toLowerCase()
+          ...userWithoutPassword2,
+          role: roleForFrontend3
         }, 
         token 
       });
     } catch (error) {
       console.error('Erro ao registrar vendedor:', error);
       return res.status(400).json({ error: 'Falha no registro do vendedor' });
+    }
+  };
+
+  public listUsers = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const users = await prisma.usuario.findMany();
+      const sanitized = users.map(u => {
+        const { senha, ...rest } = u as any;
+        return rest;
+      });
+      return res.json({ users: sanitized });
+    } catch (error) {
+      console.error('Erro ao listar usuários:', error);
+      return res.status(500).json({ error: 'Falha ao listar usuários' });
+    }
+  };
+
+  public deleteSeller = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const { id } = req.params;
+
+      const user = await prisma.usuario.findUnique({ where: { id } });
+      if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+      if (String(user.papel).toUpperCase() !== 'VENDEDOR') {
+        return res.status(400).json({ error: 'Operação permitida apenas para vendedores' });
+      }
+
+      await prisma.usuario.delete({ where: { id } });
+      return res.json({ message: 'Vendedor excluído com sucesso' });
+    } catch (error) {
+      console.error('Erro ao excluir vendedor:', error);
+      return res.status(500).json({ error: 'Falha ao excluir vendedor' });
     }
   };
 }

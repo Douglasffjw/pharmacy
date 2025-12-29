@@ -31,7 +31,7 @@ const Header: React.FC = () => {
           <div className="flex items-center gap-4">
             {user ? (
               <>
-                {user.role === 'seller' && (
+                {user.role === 'admin' && (
                   <Link 
                     to="/register-seller" 
                     className="flex items-center gap-2 text-gray-600 hover:text-green-600 transition-colors"
@@ -40,7 +40,7 @@ const Header: React.FC = () => {
                     <span className="text-sm">Registrar Vendedor</span>
                   </Link>
                 )}
-                {user.role === 'seller' && (
+                {(user.role === 'seller' || user.role === 'admin') && (
                   <Link
                     to="/seller-dashboard"
                     className="flex items-center gap-1 px-3 py-1 text-sm text-green-600 hover:text-green-700 transition-colors"

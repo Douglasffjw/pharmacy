@@ -11,94 +11,95 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
-model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String
-  password  String
-  cpf       String?  // CPF do usuário
-  phone     String?  // Telefone do usuário
-  birthDate DateTime? // Data de nascimento
-  role      Role     @default(CUSTOMER)
-  createdBy String?  // ID do vendedor que criou (apenas para vendedores)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model Usuario {
+  id            String      @id @default(uuid())
+  email         String      @unique
+  nome          String
+  senha         String
+  telefone      String?     // Telefone do usuário
+  dataNascimento DateTime?  // Data de nascimento
+  papel         Papel       @default(CLIENTE)
+  criadoPor     String?     // ID do vendedor que criou (apenas para vendedores)
+  criadoEm      DateTime    @default(now())
+  atualizadoEm  DateTime    @updatedAt
 
   // Auto-relacionamento para rastrear quem criou o usuário (apenas para vendedores)
-  creator        User?     @relation("CreatedUsers", fields: [createdBy], references: [id])
-  created        User[]    @relation("CreatedUsers")
-  
+  criador       Usuario?    @relation("UsuariosCriados", fields: [criadoPor], references: [id])
+  criados       Usuario[]   @relation("UsuariosCriados")
+
   // Relacionamentos com produtos e pedidos
-  createdProducts Product[] @relation("CreatedProducts")
-  customerOrders  Order[]   @relation("CustomerOrders")
-  sellerOrders    Order[]   @relation("SellerOrders")
+  produtosCriados Produto[]  @relation("ProdutosCriados")
+  pedidosCliente  Pedido[]   @relation("PedidosCliente")
+  pedidosVendedor Pedido[]   @relation("PedidosVendedor")
 
-  @@map("users")
+  @@map("usuarios")
 }
 
-enum Role {
-  CUSTOMER
-  SELLER
+enum Papel {
+  CLIENTE
+  VENDEDOR
+  ADMIN
 }
 
-model Product {
-  id          String   @id @default(uuid())
-  name        String
-  description String
-  price       Float
-  images      String[] // Array de URLs das imagens
-  category    String
-  brand       String
-  inStock     Boolean  @default(true)
-  quantity    Int      @default(0) // Quantidade em estoque
-  prescription Boolean @default(false)
-  createdBy   String   // ID do vendedor que criou
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model Produto {
+  id           String     @id @default(uuid())
+  nome         String
+  descricao    String
+  preco        Float
+  imagens      String[]   // Array de URLs das imagens
+  categoria    String
+  marca        String
+  emEstoque     Boolean   @default(true)
+  quantidade   Int        @default(0) // Quantidade em estoque
+  receita      Boolean    @default(false)
+  criadoPor    String     // ID do vendedor que criou
+  criadoEm     DateTime   @default(now())
+  atualizadoEm DateTime   @updatedAt
 
   // Relacionamentos
-  creator     User        @relation("CreatedProducts", fields: [createdBy], references: [id])
-  orderItems  OrderItem[]
+  criador      Usuario    @relation("ProdutosCriados", fields: [criadoPor], references: [id])
+  itensPedido  ItemPedido[]
 
-  @@map("products")
+  @@map("produtos")
 }
 
-model Order {
-  id         String      @id @default(uuid())
-  customerId String
-  sellerId   String?     // Vendedor que processou o pedido
-  total      Float
-  status     OrderStatus @default(PENDING)
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+model Pedido {
+  id          String         @id @default(uuid())
+  clienteId   String
+  vendedorId  String?        // Vendedor que processou o pedido
+  total       Float
+  statusPedido StatusPedido  @default(PENDENTE)
+  criadoEm    DateTime       @default(now())
+  atualizadoEm DateTime      @updatedAt
 
   // Relacionamentos
-  customer   User        @relation("CustomerOrders", fields: [customerId], references: [id])
-  seller     User?       @relation("SellerOrders", fields: [sellerId], references: [id])
-  items      OrderItem[]
+  cliente     Usuario        @relation("PedidosCliente", fields: [clienteId], references: [id])
+  vendedor    Usuario?       @relation("PedidosVendedor", fields: [vendedorId], references: [id])
+  itens       ItemPedido[]
 
-  @@map("orders")
+  @@map("pedidos")
 }
 
-model OrderItem {
-  id        String @id @default(uuid())
-  orderId   String
-  productId String
-  quantity  Int
-  price     Float  // Preço no momento da compra
+model ItemPedido {
+  id         String   @id @default(uuid())
+  pedidoId   String
+  produtoId  String
+  quantidade Int
+  preco      Float    // Preço no momento da compra
 
   // Relacionamentos
-  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product   Product @relation(fields: [productId], references: [id])
+  pedido     Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produto    Produto  @relation(fields: [produtoId], references: [id])
 
-  @@map("order_items")
+  @@map("itens_pedido")
 }
 
-enum OrderStatus {
-  PENDING
-  CONFIRMED
-  CANCELLED
-  COMPLETED
+enum StatusPedido {
+  PENDENTE
+  CONFIRMADO
+  CANCELADO
+  CONCLUIDO
 }

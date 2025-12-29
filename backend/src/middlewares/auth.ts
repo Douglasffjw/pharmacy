@@ -42,8 +42,20 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
 } // <- A função authMiddleware termina aqui.
 
 export function sellerMiddleware(req: Request, res: Response, next: NextFunction) {
-  if (!req.user || req.user.role !== 'SELLER') {
-    return res.status(403).json({ error: 'Acesso negado. Apenas vendedores podem acessar este recurso.' });
+  if (!req.user) {
+    return res.status(403).json({ error: 'Acesso negado.' });
+  }
+
+  const role = String(req.user.role).toLowerCase();
+  if (role !== 'vendedor' && role !== 'admin') {
+    return res.status(403).json({ error: 'Acesso negado. Apenas vendedores ou administradores podem acessar este recurso.' });
+  }
+  return next();
+}
+
+export function adminMiddleware(req: Request, res: Response, next: NextFunction) {
+  if (!req.user || String(req.user.role).toLowerCase() !== 'admin') {
+    return res.status(403).json({ error: 'Acesso negado. Apenas administradores podem acessar este recurso.' });
   }
   return next();
 }
